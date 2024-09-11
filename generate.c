@@ -1,6 +1,8 @@
 #define _GNU_SOURCE
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 struct rotor {
   double s;
@@ -139,40 +141,123 @@ struct rotor percentage(struct rotor r, double n) {
   return rotor_exponentiation(rotor_scale_multiply(n, rotor_ln(r)));
 }
 
-int main() {
+void run_one_sim(int num_steps, int save_period, struct rotor jerk) {
+  double Δt = 0.01;
+
   struct rotor current_rotation = {.s = 1.0, .yz = 0.0, .zx = 0.0, .xy = 0.0};
 
   struct rotor current_vel = {.s = 1.0, .yz = 0.0, .zx = 0.0, .xy = 0.0};
 
   struct rotor current_accel = {.s = 1.0, .yz = 0.0, .zx = 0.0, .xy = 0.0};
 
-  /* struct rotor jerk = { */
-  /*     .s = 0.0, .yz = 0.5, .zx = 0.5, .xy = 0.7071067811865476}; */
-
-  int num_steps = 100;
-  double Δt = 0.01;
-
-  struct rotor jerk = make_rotor(
-      (struct vector){
-          .x = 0.0,
-          .y = 1.0,
-          .z = 0.0,
-      },
-      (struct vector){
-          .x = 1.0,
-          .y = 0.0,
-          .z = 0.0,
-      },
-      M_2_PI);
-
   for (int i = 0; i < num_steps; i++) {
-    // if (i % 10 == 0) {
-      printf("%f,%f,%f,%f\n", current_vel.s, current_vel.yz, current_vel.zx,
+    if (i % save_period == 0) {
+      printf(",%f,%f,%f,%f", current_vel.s, current_vel.yz, current_vel.zx,
              current_vel.xy);
-    // }
+    }
+
+    double deviation1 = (double)random() / (double)RAND_MAX;
+    double deviation2 = (double)random() / (double)RAND_MAX;
+    double deviation3 = (double)random() / (double)RAND_MAX;
+    double deviation4 = (double)random() / (double)RAND_MAX;
+    double deviation5 = (double)random() / (double)RAND_MAX;
+    double deviation6 = (double)random() / (double)RAND_MAX;
+    double deviation7 = (double)random() / (double)RAND_MAX;
+
+    struct rotor jerk_random = make_rotor(
+        (struct vector){
+            .x = deviation1,
+            .y = deviation2,
+            .z = deviation3,
+        },
+        (struct vector){
+            .x = deviation4,
+            .y = deviation5,
+            .z = deviation6,
+        },
+        0.01 * (1.0 - (2 * deviation7)));
+
+    jerk = rotor_compose(jerk_random, jerk);
     current_accel = rotor_compose(percentage(jerk, Δt), current_accel);
     current_vel = rotor_compose(percentage(current_accel, Δt), current_vel);
     current_rotation =
         rotor_compose(percentage(current_vel, Δt), current_rotation);
+  }
+  printf("\n");
+}
+
+int main() {
+  srand(time(NULL)); // randomize seed
+
+  struct rotor classes_start_jerk[] = {
+      make_rotor(
+          (struct vector){
+              .x = 0.0,
+              .y = 1.0,
+              .z = 0.0,
+          },
+          (struct vector){
+              .x = 1.0,
+              .y = 0.0,
+              .z = 0.0,
+          },
+          M_2_PI),
+      make_rotor(
+          (struct vector){
+              .x = 0.5,
+              .y = 0.5,
+              .z = 0.0,
+          },
+          (struct vector){
+              .x = 1.0,
+              .y = 0.0,
+              .z = 0.0,
+          },
+          M_2_PI),
+      make_rotor(
+          (struct vector){
+              .x = 2.0,
+              .y = 9.0,
+              .z = 0.0,
+          },
+          (struct vector){
+              .x = 0.0,
+              .y = 0.0,
+              .z = 1.0,
+          },
+          M_2_PI),
+      make_rotor(
+          (struct vector){
+              .x = 3.0,
+              .y = 3.0,
+              .z = 3.0,
+          },
+          (struct vector){
+              .x = 1.0,
+              .y = -1.0,
+              .z = 2.0,
+          },
+          M_2_PI),
+  };
+
+  int num_classes = sizeof(classes_start_jerk) / sizeof(classes_start_jerk[0]);
+
+  int num_steps = 500;
+  int save_period = 50;
+
+  int num_saves = num_steps / save_period;
+
+  // write header
+  printf("label");
+  for (int i = 0; i < num_saves; i++) {
+    printf(",s_%d,i_%d,j_%d,k_%d", i, i, i, i);
+  }
+  printf("\n");
+
+  for (int class = 0; class < num_classes; class++) {
+    for (int i = 0; i < 3; i++) {
+      printf("%d", class);
+      run_one_sim(num_steps, save_period, classes_start_jerk[class]);
+    }
   }
 }
